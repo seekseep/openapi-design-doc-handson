@@ -45,7 +45,8 @@ const PUBLISH_FLAG = 'docs';
  * build-downloads.mjs は project 方式 (package.json) と example 方式 (example/index.html) の
  * どちらにも ZIP を出すので、両方を対象にする。
  */
-const ZIP_MARKERS = ['package.json', 'example/index.html', 'example/vba', 'example/gas'];
+// このハンズオンでは openapi.yaml を持つ example/ も ZIP を配る（build-downloads.mjs と合わせる）。
+const ZIP_MARKERS = ['package.json', 'example/index.html', 'example/vba', 'example/gas', 'example/openapi.yaml'];
 
 async function resolveDownloadUrl(sourceDir, base) {
   const parsed = parseLectureRel(sourceDir);
