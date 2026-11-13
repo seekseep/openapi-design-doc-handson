@@ -1,0 +1,3 @@
+*.xlsm binary
+*.xlsx binary
+*.svg text eol=lf

@@ -1,0 +1,1 @@
+{"literal":"line 1\n  indented line 2\n\nline 4\n","folded":"folded text\nnew paragraph\n","strip":"no trailing newline","keep":"keep\n\n","next":"value","nested":{"deeper":{"text":"inside\nnested\n","after":"x"}}}

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360" font-family="'Hiragino Sans','Noto Sans JP','Yu Gothic','Segoe UI',sans-serif">
+<defs><marker id="aR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="#475569"/></marker><marker id="aRsub" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="#94a3b8"/></marker></defs>
+<rect x="0" y="0" width="760" height="360" fill="#ffffff"/>
+<rect x="45" y="60" width="170" height="60" rx="16" fill="#ede9fe" stroke="#8b5cf6" stroke-width="3.5"/>
+<text x="130" y="96.2806" text-anchor="middle" font-size="17.944444444444446" fill="#6d28d9" font-weight="600">ひな形</text>
+<rect x="45" y="240" width="170" height="60" rx="16" fill="#f1f5f9" stroke="#94a3b8" stroke-width="3.5"/>
+<text x="130" y="276.281" text-anchor="middle" font-size="17.944444444444446" fill="#475569" font-weight="600">古いシート</text>
+<rect x="460" y="140" width="200" height="80" rx="16" fill="#dcfce7" stroke="#22c55e" stroke-width="3.5"/>
+<text x="560" y="186.281" text-anchor="middle" font-size="17.944444444444446" fill="#15803d" font-weight="600">新しいシート</text>
+<path d="M220.39 108.92 L454.13 157.84" fill="none" stroke="#475569" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aR)"/>
+<text x="340.734" y="123.048" text-anchor="middle" font-size="17.944444444444446" fill="#0f172a" font-weight="600">作り直す</text>
+<path d="M220.39 251.08 L454.13 202.16" fill="none" stroke="#94a3b8" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aRsub)"/>
+<text x="340.734" y="249.513" text-anchor="middle" font-size="17.944444444444446" fill="#475569" font-weight="600">処理の内容を移す</text>
+<text x="130" y="340" text-anchor="middle" font-size="13.722222222222223" fill="#475569" font-weight="400">移したあとで削除</text>
+</svg>

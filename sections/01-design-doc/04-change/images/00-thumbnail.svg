@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" font-family="'Hiragino Sans','Noto Sans JP','Yu Gothic','Segoe UI',sans-serif">
+<defs><marker id="aR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="#475569"/></marker><marker id="aRsub" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="#94a3b8"/></marker></defs>
+<rect x="0" y="0" width="760" height="380" fill="#ffffff"/>
+<svg x="80.0" y="136.7" width="80.0" height="80.0" viewBox="0 0 36 36"><path fill="#E1E8ED" d="M32.415 9.586l-9-9C23.054.225 22.553 0 22 0c-1.104 0-1.999.896-2 2 0 .552.224 1.053.586 1.415l-3.859 3.859 9 9 3.859-3.859c.362.361.862.585 1.414.585 1.104 0 2.001-.896 2-2 0-.552-.224-1.052-.585-1.414z"/><path fill="#CCD6DD" d="M22 0H7C4.791 0 3 1.791 3 4v28c0 2.209 1.791 4 4 4h22c2.209 0 4-1.791 4-4V11h-9c-1 0-2-1-2-2V0z"/><path fill="#99AAB5" d="M22 0h-2v9c0 2.209 1.791 4 4 4h9v-2h-9c-1 0-2-1-2-2V0zm-5 8c0 .552-.448 1-1 1H8c-.552 0-1-.448-1-1s.448-1 1-1h8c.552 0 1 .448 1 1zm0 4c0 .552-.448 1-1 1H8c-.552 0-1-.448-1-1s.448-1 1-1h8c.552 0 1 .448 1 1zm12 4c0 .552-.447 1-1 1H8c-.552 0-1-.448-1-1s.448-1 1-1h20c.553 0 1 .448 1 1zm0 4c0 .553-.447 1-1 1H8c-.552 0-1-.447-1-1 0-.553.448-1 1-1h20c.553 0 1 .447 1 1zm0 4c0 .553-.447 1-1 1H8c-.552 0-1-.447-1-1 0-.553.448-1 1-1h20c.553 0 1 .447 1 1zm0 4c0 .553-.447 1-1 1H8c-.552 0-1-.447-1-1 0-.553.448-1 1-1h20c.553 0 1 .447 1 1z"/></svg>
+<text x="120" y="241.101" text-anchor="middle" font-size="17.944444444444446" fill="#475569" font-weight="600">変更した YAML</text>
+<rect x="355" y="50" width="330" height="60" rx="16" fill="#dcfce7" stroke="#22c55e" stroke-width="3.5"/>
+<text x="520" y="86.2806" text-anchor="middle" font-size="17.944444444444446" fill="#15803d" font-weight="600">addComment：シートが増える</text>
+<rect x="355" y="160" width="330" height="60" rx="16" fill="#dbeafe" stroke="#3b82f6" stroke-width="3.5"/>
+<text x="520" y="196.281" text-anchor="middle" font-size="17.944444444444446" fill="#1d4ed8" font-weight="600">listTasks：表の行が増える</text>
+<rect x="355" y="270" width="330" height="60" rx="16" fill="#f1f5f9" stroke="#94a3b8" stroke-width="3.5"/>
+<text x="520" y="306.281" text-anchor="middle" font-size="17.944444444444446" fill="#475569" font-weight="600">getHealth：残して「廃止」</text>
+<path d="M192.97 169.93 L349.00 80.00" fill="none" stroke="#475569" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aR)"/>
+<path d="M193.18 190.00 L349.00 190.00" fill="none" stroke="#475569" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aR)"/>
+<path d="M192.97 210.07 L349.00 300.00" fill="none" stroke="#475569" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aR)"/>
+</svg>

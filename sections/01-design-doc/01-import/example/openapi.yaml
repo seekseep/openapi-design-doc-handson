@@ -1,0 +1,1115 @@
+# Sample API definition.
+# The goal is to cover many OpenAPI patterns so that both the Excel importer
+# and the TypeScript generator can be checked against them.
+openapi: 3.0.3
+info:
+  title: タスク管理 API
+  version: 1.0.0
+  description: |
+    詳細設計書の生成サンプル用の API 定義。
+    認証は JWT（Bearer トークン）で行う。
+
+    - アクセストークンの有効期限は 15 分
+    - リフレッシュトークンの有効期限は 30 日
+servers:
+  - url: https://api.example.com/v1
+    description: 本番
+  - url: http://localhost:3000/v1
+    description: ローカル
+tags:
+  - name: auth
+    description: 認証
+  - name: tasks
+    description: タスク
+  - name: attachments
+    description: 添付ファイル
+  - name: categories
+    description: カテゴリ
+  - name: system
+    description: システム
+
+# All operations require a JWT unless they override with `security: []`.
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: ログイン
+      x-purpose: メールアドレスとパスワードで本人確認し、JWT を発行する。
+      security: []
+      x-permissions:
+        - role: 未ログイン
+          condition: 誰でも呼び出せる
+      x-processing:
+        - step: 入力チェック
+          detail: email の形式、password の長さを確認する
+        - step: 認証
+          detail: パスワードのハッシュを照合する。失敗したら 401 を返す
+          note: 5 回連続で失敗したら 15 分間ロックする
+        - step: トークン発行
+          detail: アクセストークンとリフレッシュトークンを発行する
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: taro@example.com
+              password: P@ssw0rd!
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: メールアドレスまたはパスワードが違う
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '423':
+          description: アカウントがロックされている
+          headers:
+            Retry-After:
+              description: ロックが解除されるまでの秒数
+              schema:
+                type: integer
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: トークン再発行
+      x-purpose: 期限切れのアクセストークンを、リフレッシュトークンで再発行する。
+      security: []
+      x-permissions:
+        - role: 未ログイン
+          condition: 有効なリフレッシュトークンを持っていること
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: ログイン時に受け取ったリフレッシュトークン
+      responses:
+        '200':
+          description: 再発行成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: ログアウト
+      x-purpose: リフレッシュトークンを無効にする。
+      x-permissions:
+        - role: member
+        - role: admin
+      responses:
+        '204':
+          description: ログアウト成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: ログイン中のユーザー取得
+      x-purpose: JWT の sub クレームが示すユーザーの情報を返す。
+      x-permissions:
+        - role: member
+        - role: admin
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: タスク一覧取得
+      description: >
+        条件に合うタスクを、更新日時の新しい順に返す。
+        件数が多い場合はページングする。
+      x-permissions:
+        - role: member
+          condition: 自分が所属するプロジェクトのタスクのみ
+        - role: admin
+          condition: すべてのタスク
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: status
+          in: query
+          description: 状態で絞り込む。複数指定できる
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskStatus'
+        - name: assigneeId
+          in: query
+          description: 担当者で絞り込む
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          description: タイトルと本文の部分一致検索
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 50
+        - name: dueBefore
+          in: query
+          description: この日付以前が期限のものに絞り込む
+          schema:
+            type: string
+            format: date
+          example: '2026-12-31'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updatedAt, -updatedAt, dueDate, -dueDate, priority]
+            default: -updatedAt
+          description: 並び順。先頭に - を付けると降順
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-Total-Count:
+              description: 条件に合う全件数
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: タスク作成
+      x-purpose: 新しいタスクを登録する。
+      x-permissions:
+        - role: member
+          condition: 自分が所属するプロジェクトにのみ作成できる
+        - role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '201':
+          description: 作成成功
+          headers:
+            Location:
+              description: 作成したタスクの URL
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+
+  /tasks/export:
+    get:
+      operationId: exportTasks
+      tags: [tasks]
+      summary: タスクのエクスポート
+      x-purpose: タスク一覧を JSON または CSV でダウンロードする。
+      x-permissions:
+        - role: admin
+      parameters:
+        - name: Accept
+          in: header
+          description: 欲しい形式
+          schema:
+            type: string
+            enum: [application/json, text/csv]
+            default: application/json
+        - name: locale
+          in: cookie
+          description: CSV の見出しの言語
+          schema:
+            type: string
+            enum: [ja, en]
+            default: ja
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+            text/csv:
+              schema:
+                type: string
+              example: |
+                id,title,status
+                1b4e28ba-2fa1-11d2-883f-0016d3cca427,資料作成,todo
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: タスク取得
+      x-purpose: タスク 1 件の詳細を返す。
+      x-permissions:
+        - role: member
+          condition: 自分が所属するプロジェクトのタスクのみ
+        - role: admin
+      parameters:
+        - name: If-None-Match
+          in: header
+          description: 前回取得時の ETag。変わっていなければ 304 を返す
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          headers:
+            ETag:
+              description: タスクの版
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '304':
+          description: 変更なし
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: タスク更新
+      x-purpose: 担当者がタスクの状態や期限を変更する。送った項目だけを更新する。
+      x-permissions:
+        - role: member
+          condition: 自分が担当のタスクのみ
+        - role: admin
+          condition: すべてのタスク
+      x-processing:
+        - step: 入力チェック
+          detail: title は 1〜100 文字。dueDate に null を送ると期限を消す
+        - step: 権限チェック
+          detail: member の場合、assigneeId が JWT の sub と一致するか確認する
+        - step: 更新
+          detail: 送られた項目だけを更新し、updatedAt を現在時刻にする
+        - step: 履歴登録
+          detail: 状態が変わった場合は Activity（status_changed）を登録する
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/TaskPatch'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 他の人が先に更新した（If-Match の ETag が古い）
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: タスク削除
+      x-purpose: タスクを削除する。添付ファイルと履歴もまとめて消える。
+      x-permissions:
+        - role: admin
+      responses:
+        '204':
+          description: 削除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{taskId}/labels:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    put:
+      operationId: updateTaskLabels
+      tags: [tasks]
+      summary: ラベル更新
+      x-purpose: タスクに付けるラベル（キーと値の組）を丸ごと置き換える。
+      x-permissions:
+        - role: member
+          condition: 自分が担当のタスクのみ
+        - role: admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Labels'
+            example:
+              customer: ACME
+              sprint: '2026-11'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Labels'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{taskId}/activities:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: listActivities
+      tags: [tasks]
+      summary: 履歴一覧取得
+      x-purpose: タスクに対するコメント・状態変更・担当変更の履歴を時系列で返す。
+      x-permissions:
+        - role: member
+          condition: 自分が所属するプロジェクトのタスクのみ
+        - role: admin
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{taskId}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    post:
+      operationId: uploadAttachment
+      tags: [attachments]
+      summary: 添付ファイル登録
+      x-purpose: タスクにファイルを添付する。
+      x-permissions:
+        - role: member
+          condition: 自分が所属するプロジェクトのタスクのみ
+        - role: admin
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 添付するファイル（10MB まで）
+                comment:
+                  type: string
+                  maxLength: 200
+                  description: ファイルの説明
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: ファイルが大きすぎる
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /tasks/{taskId}/attachments/{attachmentId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+      - name: attachmentId
+        in: path
+        required: true
+        description: 添付ファイルの ID
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: downloadAttachment
+      tags: [attachments]
+      summary: 添付ファイル取得
+      x-purpose: 添付ファイルの中身をダウンロードする。
+      x-permissions:
+        - role: member
+          condition: 自分が所属するプロジェクトのタスクのみ
+        - role: admin
+      responses:
+        '200':
+          description: 成功
+          headers:
+            Content-Disposition:
+              description: 'ファイル名。例: attachment; filename="report.pdf"'
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /categories:
+    get:
+      operationId: getCategoryTree
+      tags: [categories]
+      summary: カテゴリツリー取得
+      x-purpose: カテゴリを親子の木構造で返す。
+      x-permissions:
+        - role: member
+        - role: admin
+      parameters:
+        - name: depth
+          in: query
+          description: 返す階層の深さ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+            default: 3
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /webhooks/task-events:
+    post:
+      operationId: receiveWebhook
+      tags: [system]
+      summary: 外部サービスからのイベント受信
+      deprecated: true
+      description: |
+        旧連携用。新しい連携では使わない。
+        送信元は X-Signature ヘッダーに本文の HMAC-SHA256 署名を付ける。
+      x-purpose: 外部のチケット管理サービスから、タスクの変更を受け取る。
+      security: []
+      x-permissions:
+        - role: 外部サービス
+          condition: 'X-Signature の署名が正しいこと（JWT は使わない）'
+      parameters:
+        - name: X-Signature
+          in: header
+          required: true
+          description: '本文の HMAC-SHA256 署名（形式: sha256=<16 進数>）'
+          schema:
+            type: string
+            pattern: '^sha256=[0-9a-f]{64}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+                - payload
+              properties:
+                event:
+                  type: string
+                  enum: [task.created, task.updated]
+                payload:
+                  type: object
+                  additionalProperties: true
+                  description: イベントごとに中身が変わる
+      responses:
+        '202':
+          description: 受け付けた
+        '401':
+          description: 署名が正しくない
+
+  /health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      summary: 死活監視
+      security: []
+      responses:
+        '200':
+          description: 稼働中
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        ログインで受け取ったアクセストークンを Authorization ヘッダーに付ける。
+        例: Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+
+        JWT のクレーム:
+        - sub: ユーザー ID
+        - role: member または admin
+        - exp: 有効期限
+
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      description: タスクの ID
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      description: ページ番号（1 始まり）
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPage:
+      name: perPage
+      in: query
+      description: 1 ページの件数
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: リクエストの形式が正しくない
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: JWT が無い、期限切れ、または署名が正しくない
+      headers:
+        WWW-Authenticate:
+          description: 'Bearer error="invalid_token" など'
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: JWT の role では実行できない
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: 対象が存在しない
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationFailed:
+      description: 入力値の検証エラー
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblem'
+    UnexpectedError:
+      description: 想定外のエラー
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 64
+          writeOnly: true
+          description: パスワード
+
+    TokenPair:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+          description: アクセストークン（JWT）
+          example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature
+        refreshToken:
+          type: string
+          description: リフレッシュトークン
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          description: アクセストークンの有効秒数
+          example: 900
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          description: 表示名
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+
+    Role:
+      type: string
+      description: 'member: 一般ユーザー / admin: 管理者'
+      enum: [member, admin]
+
+    TaskStatus:
+      type: string
+      description: タスクの状態
+      enum: [todo, doing, done]
+
+    Priority:
+      type: integer
+      description: '優先度（1: 低 〜 3: 高）'
+      enum: [1, 2, 3]
+
+    UserSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    TaskInput:
+      type: object
+      required:
+        - title
+        - projectId
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: タイトル
+          example: 週次レポートを作る
+        description:
+          type: string
+          maxLength: 2000
+          description: 本文（Markdown）
+        projectId:
+          type: string
+          format: uuid
+          description: 所属するプロジェクト
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        dueDate:
+          type: string
+          format: date
+          description: 期限
+        assigneeId:
+          type: string
+          format: uuid
+          description: 担当者
+        checklist:
+          type: array
+          maxItems: 20
+          description: チェックリスト
+          items:
+            type: object
+            required:
+              - text
+            properties:
+              text:
+                type: string
+                maxLength: 100
+              done:
+                type: boolean
+                default: false
+        tags:
+          type: array
+          description: タグ
+          items:
+            type: string
+            pattern: '^[a-z0-9-]+$'
+
+    Task:
+      allOf:
+        - $ref: '#/components/schemas/TaskInput'
+        - type: object
+          required:
+            - id
+            - status
+            - createdAt
+            - updatedAt
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+            assignee:
+              $ref: '#/components/schemas/UserSummary'
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+
+    TaskPatch:
+      type: object
+      description: 送った項目だけを更新する（JSON Merge Patch）
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+          description: null を送ると期限を消す
+        assigneeId:
+          type: string
+          format: uuid
+          nullable: true
+          description: null を送ると担当を外す
+
+    TaskPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+
+    PageMeta:
+      type: object
+      required:
+        - page
+        - perPage
+        - totalPages
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        totalPages:
+          type: integer
+
+    Labels:
+      type: object
+      description: キーと値の組。キーは英小文字とハイフン
+      maxProperties: 10
+      additionalProperties:
+        type: string
+        maxLength: 50
+
+    Activity:
+      oneOf:
+        - $ref: '#/components/schemas/CommentActivity'
+        - $ref: '#/components/schemas/StatusChangedActivity'
+        - $ref: '#/components/schemas/AssigneeChangedActivity'
+      discriminator:
+        propertyName: type
+        mapping:
+          comment: '#/components/schemas/CommentActivity'
+          status_changed: '#/components/schemas/StatusChangedActivity'
+          assignee_changed: '#/components/schemas/AssigneeChangedActivity'
+
+    ActivityBase:
+      type: object
+      required:
+        - id
+        - type
+        - actor
+        - occurredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          description: 履歴の種類
+        actor:
+          $ref: '#/components/schemas/UserSummary'
+        occurredAt:
+          type: string
+          format: date-time
+
+    CommentActivity:
+      allOf:
+        - $ref: '#/components/schemas/ActivityBase'
+        - type: object
+          required:
+            - body
+          properties:
+            type:
+              type: string
+              enum: [comment]
+            body:
+              type: string
+              description: コメント本文
+
+    StatusChangedActivity:
+      allOf:
+        - $ref: '#/components/schemas/ActivityBase'
+        - type: object
+          required:
+            - from
+            - to
+          properties:
+            type:
+              type: string
+              enum: [status_changed]
+            from:
+              $ref: '#/components/schemas/TaskStatus'
+            to:
+              $ref: '#/components/schemas/TaskStatus'
+
+    AssigneeChangedActivity:
+      allOf:
+        - $ref: '#/components/schemas/ActivityBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [assignee_changed]
+            from:
+              type: object
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              description: 変更前の担当者（未割り当てなら null）
+            to:
+              type: object
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              description: 変更後の担当者（未割り当てなら null）
+
+    Category:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        children:
+          type: array
+          description: 子カテゴリ（同じ形が入れ子になる）
+          items:
+            $ref: '#/components/schemas/Category'
+
+    Attachment:
+      type: object
+      required:
+        - id
+        - fileName
+        - size
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        size:
+          type: integer
+          format: int64
+          description: バイト数
+          maximum: 10485760
+        comment:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+
+    Problem:
+      type: object
+      description: エラーの共通形式（RFC 9457）
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required:
+            - errors
+          properties:
+            errors:
+              type: array
+              description: 項目ごとのエラー
+              items:
+                type: object
+                required:
+                  - field
+                  - message
+                properties:
+                  field:
+                    type: string
+                    description: 'エラーの項目（例: checklist[0].text）'
+                  message:
+                    type: string

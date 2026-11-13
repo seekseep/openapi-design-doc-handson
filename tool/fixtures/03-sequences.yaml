@@ -1,0 +1,26 @@
+simple:
+  - a
+  - b
+same-indent:
+- x
+- y
+maps:
+  - name: one
+    value: 1
+  -   name: two
+      value: 2
+  - name: three
+    list:
+      - p
+      - q
+nested:
+  - - n1
+    - n2
+  - - n3
+empty-item:
+  -
+  - after
+block-in-seq:
+  - |
+    text in seq
+  - plain

@@ -1,0 +1,32 @@
+{
+  "name": "openapi-design-doc-handson-site",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "sync-lectures": "node scripts/sync-lectures.mjs",
+    "build-downloads": "node scripts/build-downloads.mjs",
+    "build-previews": "node scripts/build-previews.mjs",
+    "predev": "node scripts/build-previews.mjs && node scripts/sync-lectures.mjs && node scripts/build-downloads.mjs",
+    "prebuild": "node scripts/build-previews.mjs && node scripts/sync-lectures.mjs && node scripts/build-downloads.mjs"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.8",
+    "@astrojs/starlight": "^0.42.10",
+    "astro": "^7.4.11",
+    "rehype-external-links": "^3.0.0",
+    "remark-directive": "^4.0.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "archiver": "^8.0.0",
+    "exceljs": "^4.4.0",
+    "iconv-lite": "^0.7.3"
+  },
+  "packageManager": "pnpm@11.21.0"
+}

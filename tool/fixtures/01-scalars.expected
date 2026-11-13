@@ -1,0 +1,1 @@
+{"plain":"hello world","number":"200","quoted-single":"it's # not a comment","quoted-double":"line1\nline2 \"q\" あ","200":"quoted key","double key":"v","url":"http://example.com/a#frag","colon-inside":"about:blank","trailing":"value","apostrophe":"it's fine","empty":"","tilde":"~","japanese":"日本語の値（全角）","emoji":"😀","hash-in-plain":"a#b"}

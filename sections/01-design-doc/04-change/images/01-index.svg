@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360" font-family="'Hiragino Sans','Noto Sans JP','Yu Gothic','Segoe UI',sans-serif">
+<defs><marker id="aR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="#475569"/></marker><marker id="aRsub" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 z" fill="#94a3b8"/></marker></defs>
+<rect x="0" y="0" width="760" height="360" fill="#ffffff"/>
+<text x="380" y="40" text-anchor="middle" font-size="22.166666666666668" fill="#0f172a" font-weight="700">目次</text>
+<rect x="50" y="75" width="200" height="50" rx="16" fill="#fef9c3" stroke="#f59e0b" stroke-width="3.5"/>
+<text x="150" y="106.281" text-anchor="middle" font-size="17.944444444444446" fill="#b45309" font-weight="600">listTasks</text>
+<text x="270" y="106" text-anchor="start" font-size="15.833333333333334" fill="#475569" font-weight="400">GET /tasks</text>
+<rect x="50" y="139" width="200" height="50" rx="16" fill="#dcfce7" stroke="#22c55e" stroke-width="3.5"/>
+<text x="150" y="170.281" text-anchor="middle" font-size="17.944444444444446" fill="#15803d" font-weight="600">addComment</text>
+<text x="270" y="170" text-anchor="start" font-size="15.833333333333334" fill="#475569" font-weight="400">POST /tasks/{taskId}/comments</text>
+<text x="690" y="170" text-anchor="middle" font-size="17.944444444444446" fill="#475569" font-weight="600">（増えた）</text>
+<rect x="50" y="203" width="200" height="50" rx="16" fill="#fef9c3" stroke="#f59e0b" stroke-width="3.5"/>
+<text x="150" y="234.281" text-anchor="middle" font-size="17.944444444444446" fill="#b45309" font-weight="600">receiveWebhook</text>
+<text x="270" y="234" text-anchor="start" font-size="15.833333333333334" fill="#475569" font-weight="400">POST /webhooks/task-events</text>
+<text x="690" y="234" text-anchor="middle" font-size="17.944444444444446" fill="#475569" font-weight="600">非推奨</text>
+<rect x="50" y="267" width="200" height="50" rx="16" fill="#fee2e2" stroke="#ef4444" stroke-width="3.5"/>
+<text x="150" y="298.281" text-anchor="middle" font-size="17.944444444444446" fill="#b91c1c" font-weight="600">getHealth</text>
+<text x="270" y="298" text-anchor="start" font-size="15.833333333333334" fill="#475569" font-weight="400">（YAML から消えた）</text>
+<text x="690" y="298" text-anchor="middle" font-size="17.944444444444446" fill="#b91c1c" font-weight="600">廃止</text>
+</svg>

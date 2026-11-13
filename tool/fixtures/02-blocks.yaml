@@ -1,0 +1,22 @@
+literal: |
+  line 1
+    indented line 2
+
+  line 4
+folded: >
+  folded
+  text
+
+  new paragraph
+strip: |-
+  no trailing newline
+keep: |+
+  keep
+
+next: value
+nested:
+  deeper:
+    text: |
+      inside
+      nested
+    after: x

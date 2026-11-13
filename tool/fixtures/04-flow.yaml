@@ -1,0 +1,7 @@
+tags: [auth, tasks]
+empty-seq: []
+empty-map: {}
+ref: { $ref: '#/components/schemas/Task' }
+mixed: [a, 'b, c', "d", {k: v, k2: [1, 2]}]
+security: [{ bearerAuth: [] }]
+enum: [application/json, text/csv]
