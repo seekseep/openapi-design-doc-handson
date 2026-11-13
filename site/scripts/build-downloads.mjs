@@ -206,7 +206,9 @@ async function findProjectLectures(exclude) {
     console.warn('[build-downloads] not a git repository; skipping project-style lectures (package.json)');
     return [];
   }
-  const dirs = files.map((p) => path.posix.dirname(p));
+  // git の pathspec の `*` は `/` もまたぐので、sections/<sec>/<lec>/example/package.json
+  // のような深い場所も拾う。レクチャー直下の package.json だけに絞る。
+  const dirs = files.map((p) => path.posix.dirname(p)).filter((d) => parseLectureRel(d) !== null);
   return [...new Set(dirs)].filter((d) => !exclude.has(d)).sort();
 }
 
