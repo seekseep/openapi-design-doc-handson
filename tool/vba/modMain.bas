@@ -14,6 +14,9 @@ Public Const CONFIG_SHEET As String = "_config"
 Private Const KEY_PREFIX As String = "opid:"
 Private Const INDEX_KEY As String = "@index"
 
+' Where the import is, for error messages.
+Private mStep As String
+
 ' Called from the button on the guide sheet.
 Public Sub ImportOpenApi()
     Dim path As String, result As String
@@ -33,9 +36,12 @@ Public Function ImportFromPath(ByVal path As String) As String
     Dim oldScreen As Boolean, oldAlerts As Boolean, oldEvents As Boolean, oldCalc As Long
 
     On Error GoTo Failed
+    mStep = "read file"
     Set root = YamlParse(ReadUtf8File(path))
+    mStep = "read OpenAPI"
     Set model = BuildModel(root, path)
 
+    mStep = "backup"
     If Label("backup") = "on" Then BackupWorkbook
 
     oldScreen = Application.ScreenUpdating
@@ -59,7 +65,7 @@ Public Function ImportFromPath(ByVal path As String) As String
     Exit Function
 
 Failed:
-    ImportFromPath = "ERROR: " & Err.Description
+    ImportFromPath = "ERROR: " & Err.Description & " (" & mStep & ", error " & Err.Number & ")"
     On Error Resume Next
     If oldCalc <> 0 Then Application.Calculation = oldCalc
     Application.EnableEvents = True
@@ -82,14 +88,18 @@ Private Function WriteSheets(ByVal model As clsNode) As Long
 
     For i = 1 To ops.Count
         Set op = ops.ItemAt(i)
+        mStep = "sheet " & op.Text("operationId") & ": copy template"
         Set old = FindSheetByKey(KEY_PREFIX & op.Text("operationId"))
         Set ws = CopyTemplate(TPL_ENDPOINT)
+        mStep = "sheet " & op.Text("operationId") & ": fill"
         FillSheet ws, NewCtx(model, op)
         If Not old Is Nothing Then
+            mStep = "sheet " & op.Text("operationId") & ": move processing"
             MoveProcessing old, ws
             ws.Move Before:=old
             old.Delete
         End If
+        mStep = "sheet " & op.Text("operationId") & ": rename"
         ws.Name = UniqueSheetName(op.Text("operationId"))
         ws.Tab.ColorIndex = xlColorIndexNone
         names.SetText op.Text("operationId"), ws.Name
@@ -105,6 +115,7 @@ Private Function WriteSheets(ByVal model As clsNode) As Long
         indexRows.Push row
     Next i
 
+    mStep = "removed sheets"
     ' Sheets whose operation disappeared from the YAML are kept (they may
     ' hold hand-written content) and marked as removed.
     For Each ws In ThisWorkbook.Worksheets
@@ -126,6 +137,7 @@ Private Function WriteSheets(ByVal model As clsNode) As Long
     Next ws
 
     ' Index sheet
+    mStep = "index sheet"
     model.SetItem "indexRows", indexRows
     Set old = FindSheetByKey(INDEX_KEY)
     Set indexWs = CopyTemplate(TPL_INDEX)
@@ -136,6 +148,7 @@ Private Function WriteSheets(ByVal model As clsNode) As Long
     If Not first Is indexWs Then indexWs.Move After:=first
 
     ' Order: index, then operations in YAML order, then removed ones.
+    mStep = "sheet order"
     Set prev = indexWs
     For i = 1 To ops.Count
         Set ws = ThisWorkbook.Worksheets(names.Text(ops.ItemAt(i).Text("operationId")))
@@ -149,13 +162,23 @@ Private Function WriteSheets(ByVal model As clsNode) As Long
 End Function
 
 Private Function CopyTemplate(ByVal templateName As String) As Worksheet
-    Dim tpl As Worksheet, ws As Worksheet, last As Worksheet
+    Dim tpl As Worksheet, ws As Worksheet, before As clsNode
+    ' Do not rely on positions: where Excel puts a copy of a hidden sheet
+    ' differs between versions. Find the sheet that was not there before.
+    Set before = NewMap()
+    For Each ws In ThisWorkbook.Worksheets
+        before.SetText ws.Name, ""
+    Next ws
     Set tpl = ThisWorkbook.Worksheets(templateName)
-    Set last = ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count)
-    tpl.Copy After:=last
-    Set ws = ThisWorkbook.Worksheets(last.Index + 1)
-    ws.Visible = xlSheetVisible
-    Set CopyTemplate = ws
+    tpl.Copy After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count)
+    For Each ws In ThisWorkbook.Worksheets
+        If Not before.Has(ws.Name) Then
+            ws.Visible = xlSheetVisible
+            Set CopyTemplate = ws
+            Exit Function
+        End If
+    Next ws
+    Err.Raise vbObjectError + 800, "Import", "Could not copy the template sheet " & templateName
 End Function
 
 Private Function FirstVisibleSheet() As Worksheet

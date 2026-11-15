@@ -256,7 +256,8 @@ Private Sub FillRow(ByVal ws As Worksheet, ByVal r As Long, ByVal ctx As Collect
                     Else
                         s = ReplacePlaceholders(s, ctx)
                         If s = "" Then
-                            cell.ClearContents
+                            ' ClearContents fails on a merged cell; assigning works.
+                            cell.Value = Empty
                         Else
                             cell.Value = "'" & s
                         End If

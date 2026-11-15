@@ -301,6 +301,8 @@ Private Function ParseMap(ByVal indent As Long) As clsNode
         If mIndent(mPos) > indent Then Fail mPos, "bad indentation"
         t = mText(mPos)
         If IsSeqItem(t) Then Exit Do
+        ' document markers end the mapping; YamlParse reports what follows
+        If t = "---" Or t = "..." Then Exit Do
         c = FindMapColon(t)
         If c = 0 Then Fail mPos, "expected 'key: value' but got '" & t & "'"
         startLine = mPos
